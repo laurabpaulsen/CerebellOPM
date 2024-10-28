@@ -6,14 +6,16 @@ import select
 from tqdm import tqdm
 from triggers import setParallelData
 from collections import Counter
+from psychopy.clock import CountdownTimer
 
 
 class Experiment:
     def __init__(self, ISIs:list[float], n_sequences:int, n_blocks:int, n_no_stim_blocks:int, omission_positions:list[int], 
-                 blocks_between_breaks:int, rest_duration:int, trigger_mapping:dict[str, int], output_path:str, participant_id:str):
+                 blocks_between_breaks:int, rest_duration:int, trigger_mapping:dict[str, int], output_path:str, participant_id:str,
+                 trigger_duration:float = 0.010):
         """
         Parameters:
-            ISIs (list of float): List of inter-stimulus intervals for each condition.
+            ISIs (list of float): List of inter-stimulus intervals for each condition.           
             n_sequences (int): Number of sequences in each block.
             n_blocks (int): Number of stimulation blocks per ISI per nerve.
             n_no_stim_blocks (int): Number of non-stimulation blocks per ISI.
@@ -32,11 +34,17 @@ class Experiment:
         self.trigger_mapping = trigger_mapping
         self.participant_id = participant_id
         self.output_path = Path(output_path)
+        self.trigger_duration = trigger_duration
+
+        self.countdown_timer = CountdownTimer()
+
         self.blocks = self.setup_experiment()
+        
         
         # Ensure the output directory exists
         if not self.output_path.exists():
             self.output_path.mkdir(parents=True)
+        
         self.logfile = self.output_path / f"experimental_{participant_id}.csv"
 
     @staticmethod
@@ -75,13 +83,24 @@ class Experiment:
 
         random.shuffle(blocks)
         return blocks
+    
+    def raise_and_lower_trigger(self, trigger):
+        setParallelData(trigger)
+        
+        self.countdown_timer.reset(self.trigger_duration)
+        
+        while self.countdown_timer.getTime() > 0:
+            pass
+        
+        setParallelData(0)
 
     def get_resting_state(self):
         """Handles the resting state data collection process."""
         self._begin_rest()
-        setParallelData(self.trigger_mapping["rest_start"])
+        self.raise_and_lower_trigger(self.trigger_mapping["rest_start"])
+
         time.sleep(self.rest_duration)
-        setParallelData(self.trigger_mapping["rest_end"])
+        self.raise_and_lower_trigger(self.trigger_mapping["rest_end"])
         self._end_rest()
 
     def _begin_rest(self):
@@ -152,8 +171,8 @@ class Experiment:
                     self._check_in_on_participant()
 
                 for event in tqdm(block["events"], desc=f"block {idx + 1} out of {len(self.blocks)}"):
-                    setParallelData(event)
                     timestamp = time.perf_counter() - experiment_start
+                    self.raise_and_lower_trigger(event)
                     log_file.write(f"{timestamp}, {idx + 1}, {ISI}, {block['nerve']}, {event}\n")
                     target_time = timestamp + ISI + experiment_start
                     while time.perf_counter() < target_time:
@@ -171,13 +190,13 @@ class Experiment:
 
 if __name__ == "__main__":
     experiment = Experiment(
-        ISIs=[1, 0.05, 0.1],
-        n_sequences=5,
-        n_blocks=2,
-        n_no_stim_blocks=1,
-        omission_positions=[4, 5, 6],
-        blocks_between_breaks=3,
-        rest_duration=10,
+        ISIs=[0.5, 1, 1.5],
+        n_sequences=3,
+        n_blocks=22,
+        n_no_stim_blocks=5,
+        omission_positions=[4, 5, 6, 7],
+        blocks_between_breaks=5, 
+        rest_duration= 1,#5*60, # in seconds
         trigger_mapping={
             "stim_tibial": 1,
             "omis_tibial": 10,
