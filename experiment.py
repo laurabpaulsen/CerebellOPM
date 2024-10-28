@@ -5,10 +5,23 @@ import sys
 import select
 from tqdm import tqdm
 from triggers import setParallelData
+from collections import Counter
+
 
 class Experiment:
-    def __init__(self, ISIs, n_sequences, n_blocks, n_no_stim_blocks, omission_positions, 
-                 blocks_between_breaks, rest_duration, trigger_mapping, output_path, participant_id):
+    def __init__(self, ISIs:list[float], n_sequences:int, n_blocks:int, n_no_stim_blocks:int, omission_positions:list[int], 
+                 blocks_between_breaks:int, rest_duration:int, trigger_mapping:dict[str, int], output_path:str, participant_id:str):
+        """
+        Parameters:
+            ISIs (list of float): List of inter-stimulus intervals for each condition.
+            n_sequences (int): Number of sequences in each block.
+            n_blocks (int): Number of stimulation blocks per ISI per nerve.
+            n_no_stim_blocks (int): Number of non-stimulation blocks per ISI.
+            omission_positions (list of int): Possible positions for omissions within sequences.
+            blocks_between_breaks (int): Number of blocks between each break.
+            rest_duration (int): Duration of each resting state period in seconds.
+
+        """
         self.ISIs = ISIs
         self.n_sequences = n_sequences
         self.n_blocks = n_blocks
@@ -73,7 +86,7 @@ class Experiment:
 
     def _begin_rest(self):
         self.flush_input()
-        input("Ready to collect resting state data. Press Enter to begin...")
+        input("Ready to collect resting state data. Make sure audiobook is turned off! Press Enter to begin...")
         time.sleep(1)
 
     def _end_rest(self):
@@ -81,9 +94,9 @@ class Experiment:
         input("Finished collecting resting state data. Press Enter to continue...")
         time.sleep(1)
 
-    def calculate_duration(self):
+    def calculate_duration(self, break_duration:int = 10):
         """Estimates the total duration of the experiment in seconds."""
-        total_duration = self.rest_duration * 2
+        total_duration = float(self.rest_duration * 2)
         mean_omissions = int(sum(self.omission_positions) / len(self.omission_positions))
 
         for ISI in self.ISIs:
@@ -97,13 +110,34 @@ class Experiment:
                 total_duration += non_stim_duration
 
         n_breaks = len(self.ISIs) * (self.n_blocks * 2 + self.n_no_stim_blocks) // self.blocks_between_breaks
-        break_duration = 2
         total_duration += n_breaks * break_duration
 
         return total_duration
+    
+    def count_event_types(self):
+        """
+        Counts the occurrences of each event type across all blocks.
+
+        Returns:
+            dict: A dictionary where keys are event names and values are the counts.
+        """
+        # Create a counter for all events across blocks
+        event_counter = Counter()
+
+        # Map triggers to their labels for readability
+        trigger_to_event = {v: k for k, v in self.trigger_mapping.items()}
+
+        # Loop through all blocks and events within each block
+        for block in self.blocks:
+            for event in block["events"]:
+                # Translate event trigger to its event name using the trigger mapping
+                event_name = trigger_to_event.get(event, "unknown_event")
+                event_counter[event_name] += 1
+
+        return dict(event_counter)
 
     def run(self):
-        """Executes the experiment, managing breaks, resting states, and logging."""
+        """Executes the experiment, managing breaks, resting states, and saves data"""
         with open(self.logfile, 'w') as log_file:
             log_file.write("timestamp, block, ISI, nerve, trigger\n")
 
@@ -158,4 +192,7 @@ if __name__ == "__main__":
     )
 
     print(f"Estimated duration: {experiment.calculate_duration() / 60:.2f} minutes")
+    event_counts = experiment.count_event_types()
+    print(event_counts)
+    
     experiment.run()
