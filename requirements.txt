@@ -1,1 +1,10 @@
-psychopy
+h5py
+packaging
+six
+pyqt6
+python-gitlab
+pillow>=9.4.0
+pandas>=1.5.3
+opencv-python
+openpyxl
+tqdm
