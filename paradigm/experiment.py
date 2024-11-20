@@ -1,6 +1,15 @@
+"""
+This script is used to run the paradigm for WP1
+
+
+Notes:
+- Do we want to add a "cooling off" period before the non-stimulation sequences start? So that the expectation of stimulation has some time to go away?
+"""
+
 from pathlib import Path
 import time
 import random
+from math import ceil
 import sys
 import select
 from tqdm import tqdm
@@ -11,14 +20,14 @@ from psychopy.clock import CountdownTimer
 
 class Experiment:
     def __init__(self, ISIs:list[float], n_sequences:int, n_blocks:int, n_no_stim_blocks:int, omission_positions:list[int], 
-                 blocks_between_breaks:int, rest_duration:int, trigger_mapping:dict[str, int], output_path:str, participant_id:str,
-                 trigger_duration:float = 0.010):
+                 blocks_between_breaks:int, rest_duration:int, trigger_mapping:dict[str, int], output_path:Path, participant_id:str,
+                 trigger_duration:float = 0.010, trigger_LSL:bool = False):
         """
         Parameters:
             ISIs (list of float): List of inter-stimulus intervals for each condition.           
             n_sequences (int): Number of sequences in each block.
             n_blocks (int): Number of stimulation blocks per ISI per nerve.
-            n_no_stim_blocks (int): Number of non-stimulation blocks per ISI.
+            n_no_stim_blocks (int): Number of non-stimulation blocks per ISI per nerve.
             omission_positions (list of int): Possible positions for omissions within sequences.
             blocks_between_breaks (int): Number of blocks between each break.
             rest_duration (int): Duration of each resting state period in seconds.
@@ -35,6 +44,13 @@ class Experiment:
         self.participant_id = participant_id
         self.output_path = Path(output_path)
         self.trigger_duration = trigger_duration
+        self.trigger_lsl = trigger_LSL
+        
+        if self.trigger_lsl:
+            from pylsl import StreamInfo, StreamOutlet
+            info = StreamInfo(name='Markers', type='Markers', channel_count=1,
+                      channel_format='int32', source_id='trigger_stream')
+            self.outlet = StreamOutlet(info)  # Broadcast the stream.
 
         self.countdown_timer = CountdownTimer()
 
@@ -42,10 +58,10 @@ class Experiment:
         
         
         # Ensure the output directory exists
-        if not self.output_path.exists():
-            self.output_path.mkdir(parents=True)
+        if not self.output_path.parent.exists():
+            self.output_path.parent.mkdir(parents=True)
         
-        self.logfile = self.output_path / f"experimental_{participant_id}.csv"
+        self.logfile = self.output_path 
 
     @staticmethod
     def flush_input():
@@ -59,12 +75,18 @@ class Experiment:
 
         # Generate stimulation blocks for each nerve type and ISI
         for stim in ["tibial", "median"]:
+
+            # to ensure an equal amout of stimulations for tibial and median, we generate lists with omission positions that corresponds to the amout of omissions that will happen
+            omission_positions_tmp = self.omission_positions * ceil((self.n_sequences * len(self.ISIs) * self.n_blocks)/len(self.omission_positions))
+            omission_positions_tmp = omission_positions_tmp[:len(self.ISIs)*self.n_blocks*self.n_sequences]
+
+
             for ISI in self.ISIs:
                 for _ in range(self.n_blocks):
                     block_structure = {"ISI": ISI, "nerve": stim, "events": []}
                     for _ in range(self.n_sequences):
-                        omission_idx = random.choice(self.omission_positions)
-                        n_stimulations = omission_idx - 1
+                        omission_pos = omission_positions_tmp.pop(random.randrange(len(omission_positions_tmp))) 
+                        n_stimulations = omission_pos - 1
 
                         # Add stimulations followed by an omission
                         block_structure["events"].extend([self.trigger_mapping[f"stim_{stim}"]] * n_stimulations)
@@ -85,14 +107,18 @@ class Experiment:
         return blocks
     
     def raise_and_lower_trigger(self, trigger):
-        setParallelData(trigger)
-        
-        self.countdown_timer.reset(self.trigger_duration)
-        
-        while self.countdown_timer.getTime() > 0:
-            pass
-        
-        setParallelData(0)
+        if self.trigger_lsl:
+            self.outlet.push_sample([trigger])
+
+        else:
+            setParallelData(trigger)
+            
+            self.countdown_timer.reset(self.trigger_duration)
+            
+            while self.countdown_timer.getTime() > 0:
+                pass
+            
+            setParallelData(0)
 
     def get_resting_state(self):
         """Handles the resting state data collection process."""
@@ -157,7 +183,7 @@ class Experiment:
 
     def run(self):
         """Executes the experiment, managing breaks, resting states, and saves data"""
-        with open(self.logfile, 'w') as log_file:
+        with open(str(self.logfile), 'w') as log_file:
             log_file.write("timestamp, block, ISI, nerve, trigger\n")
 
             experiment_start = time.perf_counter()
@@ -189,14 +215,18 @@ class Experiment:
 
 
 if __name__ == "__main__":
+    path = Path(__file__).parents[1]
+    participant_id="001"
+
+
     experiment = Experiment(
-        ISIs=[0.5, 1, 1.5],
-        n_sequences=3,
-        n_blocks=22,
-        n_no_stim_blocks=5,
+        ISIs=[0.5, 0.65, 0.80, 1],
+        n_sequences=5,
+        n_blocks=10,
+        n_no_stim_blocks=2,
         omission_positions=[4, 5, 6, 7],
-        blocks_between_breaks=5, 
-        rest_duration= 1,#5*60, # in seconds
+        blocks_between_breaks=10, 
+        rest_duration= 5*60, # in seconds
         trigger_mapping={
             "stim_tibial": 1,
             "omis_tibial": 10,
@@ -206,8 +236,9 @@ if __name__ == "__main__":
             "rest_start": 100,
             "rest_end": 110
         },
-        output_path="output",
-        participant_id="001"
+        output_path= path / "output" / participant_id / f"logfile_{participant_id}.csv",
+        participant_id=participant_id,
+        trigger_LSL=True
     )
 
     print(f"Estimated duration: {experiment.calculate_duration() / 60:.2f} minutes")
