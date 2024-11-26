@@ -218,6 +218,10 @@ if __name__ == "__main__":
     path = Path(__file__).parents[1]
     participant_id="001"
 
+    print(path)
+
+    sys.path.append(str(path))
+
 
     experiment = Experiment(
         ISIs=[0.5, 0.65, 0.80, 1],
