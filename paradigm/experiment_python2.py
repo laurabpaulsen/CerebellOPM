@@ -6,11 +6,8 @@ Notes:
 """
 import os
 import time as time
-#from time import perf_counter
 import random
 from math import ceil
-import os
-
 from tqdm import tqdm
 from triggers import setParallelData
 from collections import Counter
@@ -223,15 +220,17 @@ if __name__ == "__main__":
         omission_positions=[4, 5, 6, 7],
         blocks_between_breaks=100, 
         rest_duration= 5*60, # in seconds
-        trigger_mapping={
-            "stim_tibial": 10, 
-            "omis_tibial": 1,
-            "stim_median": 65,
-            "omis_median": 2,
-            "non_stim": 3,
-            "rest_start": 4,
-            "rest_end": 40
-        },
+        trigger_mapping={        # first pin is connected to OPM system, parallelport goes into EEG -> EEG carries specific information about the events, OPMs receives the same trigger for everything
+            "stim_tibial": 65,   # both the first and seventh pin is raised -> SCG for tibial is connected to the seventh pin
+            "omis_tibial": 1,    # first pin is raised
+            "stim_median": 129,  # both the first and eigth pin is raised -> SCG for median is connected to the eight pin
+            "omis_median": 3,    # first and second pin is raised
+            "non_stim": 5,       # first and third pin is raised
+            "rest_start": 7,     # first pin is raised 
+            "rest_end": 9        # first pin is raised
+        },                       
+        
+        
         output_path= os.path.join("output", participant_id, "logfile_{}.csv".format(participant_id)),
         participant_id=participant_id,
         trigger_LSL=False

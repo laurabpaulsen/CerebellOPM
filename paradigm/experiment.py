@@ -63,12 +63,6 @@ class Experiment:
         
         self.logfile = self.output_path 
 
-    @staticmethod
-    def flush_input():
-        """Clears out any existing input in the buffer."""
-        if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
-            sys.stdin.read(1)
-
     def setup_experiment(self):
         """Sets up an experiment structure with both stimulation and non-stimulation blocks."""
         blocks = []
@@ -130,12 +124,10 @@ class Experiment:
         self._end_rest()
 
     def _begin_rest(self):
-        self.flush_input()
         input("Ready to collect resting state data. Make sure audiobook is turned off! Press Enter to begin...")
         time.sleep(1)
 
     def _end_rest(self):
-        self.flush_input()
         input("Finished collecting resting state data. Press Enter to continue...")
         time.sleep(1)
 
@@ -208,7 +200,6 @@ class Experiment:
             print("Experiment done! Go fetch the participant")
 
     def _check_in_on_participant(self):
-        self.flush_input()
         input("Check in on the participant. Press Enter to continue...")
         time.sleep(1)
 
@@ -231,15 +222,15 @@ if __name__ == "__main__":
         omission_positions=[4, 5, 6, 7],
         blocks_between_breaks=10, 
         rest_duration= 5*60, # in seconds
-        trigger_mapping={
-            "stim_tibial": 1,
-            "omis_tibial": 10,
-            "stim_median": 2,
-            "omis_median": 20,
-            "non_stim": 30,
-            "rest_start": 100,
-            "rest_end": 110
-        },
+        trigger_mapping={        # first pin is connected to OPM system, parallelport goes into EEG -> EEG carries specific information about the events, OPMs receives the same trigger for everything
+            "stim_tibial": 65,   # both the first and seventh pin is raised -> SCG for tibial is connected to the seventh pin
+            "omis_tibial": 1,    # first pin is raised
+            "stim_median": 129,  # both the first and eigth pin is raised -> SCG for median is connected to the eight pin
+            "omis_median": 3,    # first and second pin is raised
+            "non_stim": 5,       # first and third pin is raised
+            "rest_start": 7,     # first pin is raised 
+            "rest_end": 9        # first pin is raised
+        },   
         output_path= path / "output" / participant_id / f"logfile_{participant_id}.csv",
         participant_id=participant_id,
         trigger_LSL=True
