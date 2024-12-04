@@ -209,9 +209,28 @@ if __name__ == "__main__":
     path = Path(__file__).parents[1]
     participant_id="001"
 
-    print(path)
-
-    sys.path.append(str(path))
+    
+    trig_opm_sys_bit = 1
+    tibial_bit = 2
+    median_bit = 4
+    omis_bit = 8
+    non_stim_bit = 16
+    rest_bit = 32
+    tibial_stim_bit = 64
+    median_stim_bit = 128
+    
+    trigger_mapping = {
+            # second pin is connected to OPM system, parallelport goes into EEG -> EEG carries specific information about the events, OPMs receives the same trigger for everything where the second pin is raised
+            # SCG for tibial is connected to seventh pin
+            # SCG for median is connected to eighth pin
+            "stim_tibial": tibial_bit + tibial_stim_bit + trig_opm_sys_bit, 
+            "omis_tibial": tibial_bit + omis_bit  + trig_opm_sys_bit,    
+            "stim_median": median_bit + median_stim_bit + trig_opm_sys_bit,  
+            "omis_median": median_bit + omis_bit  + trig_opm_sys_bit,    
+            "non_stim": non_stim_bit + trig_opm_sys_bit,       
+            "rest_start": rest_bit + trig_opm_sys_bit,     
+            "rest_end": rest_bit + trig_opm_sys_bit,
+    }
 
 
     experiment = Experiment(
@@ -222,15 +241,7 @@ if __name__ == "__main__":
         omission_positions=[4, 5, 6, 7],
         blocks_between_breaks=10, 
         rest_duration= 5*60, # in seconds
-        trigger_mapping={        # first pin is connected to OPM system, parallelport goes into EEG -> EEG carries specific information about the events, OPMs receives the same trigger for everything
-            "stim_tibial": 65,   # both the first and seventh pin is raised -> SCG for tibial is connected to the seventh pin
-            "omis_tibial": 1,    # first pin is raised
-            "stim_median": 129,  # both the first and eigth pin is raised -> SCG for median is connected to the eight pin
-            "omis_median": 3,    # first and second pin is raised
-            "non_stim": 5,       # first and third pin is raised
-            "rest_start": 7,     # first pin is raised 
-            "rest_end": 9        # first pin is raised
-        },   
+        trigger_mapping=trigger_mapping,   
         output_path= path / "output" / participant_id / f"logfile_{participant_id}.csv",
         participant_id=participant_id,
         trigger_LSL=True

@@ -212,8 +212,9 @@ class Experiment:
 if __name__ == "__main__":
     participant_id="001"
 
-    tibial_bit = 1
-    trig_opm_sys_bit = 2
+    
+    trig_opm_sys_bit = 1
+    tibial_bit = 2
     median_bit = 4
     omis_bit = 8
     non_stim_bit = 16
