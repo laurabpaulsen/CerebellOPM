@@ -24,7 +24,7 @@ else: # for python3
 class Experiment:
     def __init__(self, ISIs, n_sequences, n_blocks, n_no_stim_blocks, omission_positions,
                  blocks_between_breaks, rest_duration, trigger_mapping, output_path, participant_id,
-                 trigger_duration= 0.05, trigger_LSL= False):
+                 trigger_duration=0.05, trigger_LSL=False):
         """
         Parameters:
             ISIs (list of float): List of inter-stimulus intervals for each condition.           
@@ -197,7 +197,7 @@ class Experiment:
                     log_file.write("{}, {}, {}, {}, {}\n".format(timestamp,idx + 1,ISI,block['nerve'],event))
                     # print("{}, {}\n".format(block['nerve'],event))
                     target_time = timestamp + ISI + experiment_start
-                    while perf_counter < target_time:
+                    while perf_counter() < target_time:
                         pass
 
             self.get_resting_state()
@@ -212,6 +212,28 @@ class Experiment:
 if __name__ == "__main__":
     participant_id="001"
 
+    stim_bit = 1
+    trig_opm_sys_bit = 2
+    omis_bit = 4
+    non_stim_bit = 8
+    rest_bit = 32
+    tibial_bit = 64
+    median_bit = 128
+    
+    trigger_mapping = {
+            # second pin is connected to OPM system, parallelport goes into EEG -> EEG carries specific information about the events, OPMs receives the same trigger for everything where the second pin is raised
+            # SCG for tibial is connected to seventh pin
+            # SCG for median is connected to eighth pin
+            "stim_tibial": stim_bit + tibial_bit + trig_opm_sys_bit, 
+            "omis_tibial": omis_bit + tibial_bit + trig_opm_sys_bit,    
+            "stim_median": stim_bit + median_bit + trig_opm_sys_bit,  
+            "omis_median": omis_bit + median_bit + trig_opm_sys_bit,    
+            "non_stim": non_stim_bit + trig_opm_sys_bit,       
+            "rest_start": rest_bit + trig_opm_sys_bit,     
+            "rest_end": rest_bit + trig_opm_sys_bit,
+    }
+    print(trigger_mapping)
+
     experiment = Experiment(
         ISIs=[0.5, 0.65, 0.80, 1],
         n_sequences=5,
@@ -220,20 +242,9 @@ if __name__ == "__main__":
         omission_positions=[4, 5, 6, 7],
         blocks_between_breaks=100, 
         rest_duration= 5*60, # in seconds
-        trigger_mapping={        # first pin is connected to OPM system, parallelport goes into EEG -> EEG carries specific information about the events, OPMs receives the same trigger for everything
-            "stim_tibial": 65,   # both the first and seventh pin is raised -> SCG for tibial is connected to the seventh pin
-            "omis_tibial": 1,    # first pin is raised
-            "stim_median": 129,  # both the first and eigth pin is raised -> SCG for median is connected to the eight pin
-            "omis_median": 3,    # first and second pin is raised
-            "non_stim": 5,       # first and third pin is raised
-            "rest_start": 7,     # first pin is raised 
-            "rest_end": 9        # first pin is raised
-        },                       
-        
-        
+        trigger_mapping = trigger_mapping,                       
         output_path= os.path.join("output", participant_id, "logfile_{}.csv".format(participant_id)),
         participant_id=participant_id,
-        trigger_LSL=False
     )
 
     print("Estimated duration: {} minutes".format(experiment.calculate_duration() / 60))
