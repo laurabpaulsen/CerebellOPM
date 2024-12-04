@@ -212,22 +212,23 @@ class Experiment:
 if __name__ == "__main__":
     participant_id="001"
 
-    stim_bit = 1
+    tibial_bit = 1
     trig_opm_sys_bit = 2
-    omis_bit = 4
-    non_stim_bit = 8
+    median_bit = 4
+    omis_bit = 8
+    non_stim_bit = 16
     rest_bit = 32
-    tibial_bit = 64
-    median_bit = 128
+    tibial_stim_bit = 64
+    median_stim_bit = 128
     
     trigger_mapping = {
             # second pin is connected to OPM system, parallelport goes into EEG -> EEG carries specific information about the events, OPMs receives the same trigger for everything where the second pin is raised
             # SCG for tibial is connected to seventh pin
             # SCG for median is connected to eighth pin
-            "stim_tibial": stim_bit + tibial_bit + trig_opm_sys_bit, 
-            "omis_tibial": omis_bit + tibial_bit + trig_opm_sys_bit,    
-            "stim_median": stim_bit + median_bit + trig_opm_sys_bit,  
-            "omis_median": omis_bit + median_bit + trig_opm_sys_bit,    
+            "stim_tibial": tibial_bit + tibial_stim_bit + trig_opm_sys_bit, 
+            "omis_tibial": tibial_bit + omis_bit  + trig_opm_sys_bit,    
+            "stim_median": median_bit + median_stim_bit + trig_opm_sys_bit,  
+            "omis_median": median_bit + omis_bit  + trig_opm_sys_bit,    
             "non_stim": non_stim_bit + trig_opm_sys_bit,       
             "rest_start": rest_bit + trig_opm_sys_bit,     
             "rest_end": rest_bit + trig_opm_sys_bit,
