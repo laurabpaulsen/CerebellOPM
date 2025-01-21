@@ -10,8 +10,6 @@ from pathlib import Path
 import time
 import random
 from math import ceil
-import sys
-import select
 from tqdm import tqdm
 from triggers import setParallelData
 from collections import Counter
