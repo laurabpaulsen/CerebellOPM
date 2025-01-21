@@ -5,13 +5,13 @@
 # for local imports
 import sys
 from pathlib import Path
-import mne
 
 # make sure to append path to OPM_lab
 sys.path.append("/Users/au661930/Library/CloudStorage/OneDrive-Aarhusuniversitet/Dokumenter/project placement/OPM_lab") 
 from OPM_lab.digitise import Digitiser, FastrakConnector
 from OPM_lab.sensor_position import FL_alpha1_helmet, EEGcapTemplate
 
+from .config import OPM_sensors, EEG_sensors, fiducials
 
 def get_participant_information():
     print("Please enter participant information:")
@@ -30,10 +30,6 @@ if __name__ == "__main__":
 
     if not output_path.exists():
         output_path.mkdir(parents=True)
-
-    fiducials = ["lpa", "rpa", "nasion"]
-    OPM_sensors = ['FL57', 'FL58', 'FL59', 'FL60', 'FL61', 'FL83', 'FL84', 'FL98', 'FL99', 'FL102', 'FL103', 'FL104', 'FL105', 'FL106', 'FL107']
-    EEG_sensors = [ "Cz", "C3", "F3", "FC1", "CP1", "CP5"]
 
     head_surface_size = 100
 
